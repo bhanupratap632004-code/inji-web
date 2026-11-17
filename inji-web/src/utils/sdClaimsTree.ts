@@ -18,8 +18,46 @@ export type ClaimGroup = {
 
 export type ClaimNode = ClaimLeaf | ClaimGroup;
 
-const parseClaimPath = (path: string): string[] =>
-    path.replace(/^\$\./, "").split(".").filter(Boolean);
+const BRACKET_SEGMENT = /^\[(['"])((?:\\.|(?!\1).)*)\1\]/;
+const QUOTED_BRACKET_START = /\[['"]/;
+
+/**
+ * Splits a claim path into its keys. Dotted paths (`$.address.city`) split on dots.
+ * A bracket-quoted key (`$['org.iso.18013.5.1']['family_name']`, used for mdoc) stays one
+ * key even when it contains dots, so an mdoc namespace is not broken into pieces.
+ */
+export const parseClaimPath = (path: string): string[] => {
+    const rest = path.replace(/^\$/, "");
+    if (!QUOTED_BRACKET_START.test(rest)) {
+        return rest.replace(/^\./, "").split(".").filter(Boolean);
+    }
+
+    const segments: string[] = [];
+    let remaining = rest;
+    while (remaining.length > 0) {
+        if (remaining.startsWith(".")) {
+            remaining = remaining.slice(1);
+            continue;
+        }
+        const bracket = BRACKET_SEGMENT.exec(remaining);
+        if (bracket) {
+            segments.push(bracket[2].replace(/\\(.)/g, "$1"));
+            remaining = remaining.slice(bracket[0].length);
+            continue;
+        }
+        // A plain key runs to the next dot or quoted bracket; an index like [0] stays on its key.
+        const nextBoundary = remaining.search(/\.|\[['"]/);
+        // An unterminated quoted bracket has no boundary to stop at: keep the rest as one key.
+        const end = nextBoundary <= 0 ? remaining.length : nextBoundary;
+        segments.push(remaining.slice(0, end));
+        remaining = remaining.slice(end);
+    }
+    return segments.filter(Boolean);
+};
+
+/** Keys containing a dot are mdoc namespaces (e.g. org.iso.18013.5.1); show them as they are. */
+const formatSegmentLabel = (segment: string): string =>
+    segment.includes(".") ? segment : formatKeyLabel(segment);
 
 const insertIntoTree = (
     nodes: ClaimNode[],
@@ -35,7 +73,7 @@ const insertIntoTree = (
         nodes.push({
             kind: "leaf",
             path,
-            label: formatKeyLabel(segments[0]),
+            label: formatSegmentLabel(segments[0]),
             claimType,
         });
         return;
@@ -51,7 +89,7 @@ const insertIntoTree = (
         group = {
             kind: "group",
             key: head,
-            label: formatKeyLabel(head),
+            label: formatSegmentLabel(head),
             children: [],
         };
         nodes.push(group);

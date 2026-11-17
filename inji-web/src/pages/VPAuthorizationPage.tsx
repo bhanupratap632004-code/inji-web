@@ -9,7 +9,7 @@ import { useApi } from "../hooks/useApi";
 import { useNavigate } from 'react-router-dom';
 import {OPENID4VP_AUTHORIZE_PREFIX, ROUTES} from "../utils/constants";
 import { PresentationCredential } from "../types/components";
-import { SelectedSdClaimsMap } from "../types/data";
+import { SelectedSdClaimsMap, WalletCredential } from "../types/data";
 import { CredentialShareHandler, CredentialShareSuccessPayload } from "../handlers/CredentialShareHandler";
 import { CredentialShareSuccessView } from "../components/Ovp/CredentialShareSuccessView";
 import { useApiErrorHandler } from "../hooks/useApiErrorHandler";
@@ -21,7 +21,10 @@ import {
 import MatchingCredentials from "../components/Ovp/MatchingCredentials";
 import DcqlQueryGroups from "../components/Ovp/DcqlQueryGroups";
 import DcqlCredentialSets from "../components/Ovp/DcqlCredentialSets";
-import { isSdJwtCredential } from "../components/Ovp/Dcql/credentialCardUtils";
+import {
+    buildMdocDefaultSdClaims,
+    isSelectivelyDisclosableCredential,
+} from "../components/Ovp/Dcql/credentialCardUtils";
 import {
     DcqlCredentialSet,
     DcqlCredentialSetSelectionState,
@@ -231,12 +234,12 @@ export const VPAuthorizationPage: React.FC = () => {
                             : buildInitialDcqlSelection(groups);
                         const flatCredentials = flattenQueryGroupCredentials(groups);
 
-                        // Auto-select all sdClaims for SD-JWT credentials in DCQL — user
-                        // does not pick disclosures manually; all available claims are shared.
+                        // Auto-select all sdClaims for SD-JWT and mdoc credentials in DCQL — user
+                        // does not pick disclosures manually; all requested claims are shared.
                         const autoSdClaims: SelectedSdClaimsMap = {};
                         flatCredentials.forEach((credential) => {
                             if (
-                                isSdJwtCredential(credential) &&
+                                isSelectivelyDisclosableCredential(credential) &&
                                 Array.isArray(credential.sdClaims) &&
                                 credential.sdClaims.length > 0
                             ) {
@@ -275,8 +278,15 @@ export const VPAuthorizationPage: React.FC = () => {
                         setQueryGroupsData([]);
                         setFilteredQueryGroups([]);
                         setDcqlSelection({});
-                        setCredentialsData(data?.availableCredentials ?? []);
-                        setFilteredCredentials(data?.availableCredentials ?? []);
+                        const availableCredentials: WalletCredential[] =
+                            data?.availableCredentials ?? [];
+                        // mdoc: Mimoto sends only the requested data elements as sdClaims,
+                        // so start with all of them selected. The user can still deselect.
+                        setSelectedSdClaimsByCredential(
+                            buildMdocDefaultSdClaims(availableCredentials)
+                        );
+                        setCredentialsData(availableCredentials);
+                        setFilteredCredentials(availableCredentials);
                         const raw = data?.missingClaims;
                         setMissingClaimsData(
                             Array.isArray(raw) ? raw.map((c: unknown) => String(c)) : []
@@ -467,13 +477,13 @@ export const VPAuthorizationPage: React.FC = () => {
                     return next;
                 });
             } else {
-                // Re-add all sdClaims when an SD-JWT credential is re-selected in DCQL.
+                // Re-add all sdClaims when an SD-JWT or mdoc credential is re-selected in DCQL.
                 const credential = credentialsData?.find(
                     (c) => c.credentialId === credentialId
                 );
                 if (
                     credential &&
-                    isSdJwtCredential(credential) &&
+                    isSelectivelyDisclosableCredential(credential) &&
                     Array.isArray(credential.sdClaims) &&
                     credential.sdClaims.length > 0
                 ) {
@@ -493,7 +503,7 @@ export const VPAuthorizationPage: React.FC = () => {
         }
         const payload: SelectedSdClaimsMap = {};
         selectedCredentialsData.forEach((credential) => {
-            if (!isSdJwtCredential(credential)) {
+            if (!isSelectivelyDisclosableCredential(credential)) {
                 return;
             }
             if (credential.credentialId in selectedSdClaimsByCredential) {
@@ -601,9 +611,20 @@ export const VPAuthorizationPage: React.FC = () => {
                     delete next[id];
                     return next;
                 });
+                return;
+            }
+            // Re-selecting an mdoc credential starts again from the requested claims.
+            const credential = credentialsData?.find((c) => c.credentialId === id);
+            const mdocDefaults = credential
+                ? buildMdocDefaultSdClaims([credential])
+                : {};
+            if (id in mdocDefaults) {
+                setSelectedSdClaimsByCredential((prev) =>
+                    id in prev ? prev : { ...prev, [id]: mdocDefaults[id] }
+                );
             }
         },
-        []
+        [credentialsData]
     );
 
     const renderSearchBar = () => {
