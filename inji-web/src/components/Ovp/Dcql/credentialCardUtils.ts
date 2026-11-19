@@ -15,10 +15,6 @@ export function isMdocCredential(credential: CredentialWithFormat): boolean {
     return credential.format === MDOC_CREDENTIAL_FORMAT;
 }
 
-/**
- * Credentials whose claims are shared one by one (SD-JWT disclosures, mdoc data elements).
- * For these the wallet shows which claims go to the verifier instead of the whole card.
- */
 export function isSelectivelyDisclosableCredential(credential: CredentialWithFormat): boolean {
     return isSdJwtCredential(credential) || isMdocCredential(credential);
 }
@@ -33,10 +29,6 @@ export function getCredentialActionVariant(
     return "viewCard";
 }
 
-/**
- * mdoc credentials start with every requested data element selected. Mimoto sends only the
- * elements the verifier asked for as sdClaims, so nothing else is preselected.
- */
 export function buildMdocDefaultSdClaims(
     credentials: WalletCredential[]
 ): SelectedSdClaimsMap {

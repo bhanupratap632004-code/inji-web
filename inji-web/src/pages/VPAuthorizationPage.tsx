@@ -234,8 +234,8 @@ export const VPAuthorizationPage: React.FC = () => {
                             : buildInitialDcqlSelection(groups);
                         const flatCredentials = flattenQueryGroupCredentials(groups);
 
-                        // Auto-select all sdClaims for SD-JWT and mdoc credentials in DCQL — user
-                        // does not pick disclosures manually; all requested claims are shared.
+                        // Auto-select all sdClaims for SD-JWT credentials in DCQL — user
+                        // does not pick disclosures manually; all available claims are shared.
                         const autoSdClaims: SelectedSdClaimsMap = {};
                         flatCredentials.forEach((credential) => {
                             if (
@@ -280,8 +280,6 @@ export const VPAuthorizationPage: React.FC = () => {
                         setDcqlSelection({});
                         const availableCredentials: WalletCredential[] =
                             data?.availableCredentials ?? [];
-                        // mdoc: Mimoto sends only the requested data elements as sdClaims,
-                        // so start with all of them selected. The user can still deselect.
                         setSelectedSdClaimsByCredential(
                             buildMdocDefaultSdClaims(availableCredentials)
                         );
@@ -477,7 +475,7 @@ export const VPAuthorizationPage: React.FC = () => {
                     return next;
                 });
             } else {
-                // Re-add all sdClaims when an SD-JWT or mdoc credential is re-selected in DCQL.
+                // Re-add all sdClaims when an SD-JWT credential is re-selected in DCQL.
                 const credential = credentialsData?.find(
                     (c) => c.credentialId === credentialId
                 );
@@ -613,7 +611,6 @@ export const VPAuthorizationPage: React.FC = () => {
                 });
                 return;
             }
-            // Re-selecting an mdoc credential starts again from the requested claims.
             const credential = credentialsData?.find((c) => c.credentialId === id);
             const mdocDefaults = credential
                 ? buildMdocDefaultSdClaims([credential])

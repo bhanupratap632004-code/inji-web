@@ -18,52 +18,39 @@ export type ClaimGroup = {
 
 export type ClaimNode = ClaimLeaf | ClaimGroup;
 
-const BRACKET_SEGMENT = /^\[(['"])((?:\\.|(?!\1).)*)\1\]/;
-const QUOTED_BRACKET_START = /\[['"]/;
-
-/**
- * Splits a claim path into its keys. Dotted paths (`$.address.city`) split on dots.
- * A bracket-quoted key (`$['org.iso.18013.5.1']['family_name']`, used for mdoc) stays one
- * key even when it contains dots, so an mdoc namespace is not broken into pieces.
- */
-export const parseClaimPath = (path: string): string[] => {
-    const rest = path.replace(/^\$/, "");
-    if (!QUOTED_BRACKET_START.test(rest)) {
-        return rest.replace(/^\./, "").split(".").filter(Boolean);
-    }
-
-    const segments: string[] = [];
-    let remaining = rest;
-    while (remaining.length > 0) {
-        if (remaining.startsWith(".")) {
-            remaining = remaining.slice(1);
-            continue;
-        }
-        const bracket = BRACKET_SEGMENT.exec(remaining);
-        if (bracket) {
-            segments.push(bracket[2].replace(/\\(.)/g, "$1"));
-            remaining = remaining.slice(bracket[0].length);
-            continue;
-        }
-        // A plain key runs to the next dot or quoted bracket; an index like [0] stays on its key.
-        const nextBoundary = remaining.search(/\.|\[['"]/);
-        // An unterminated quoted bracket has no boundary to stop at: keep the rest as one key.
-        const end = nextBoundary <= 0 ? remaining.length : nextBoundary;
-        segments.push(remaining.slice(0, end));
-        remaining = remaining.slice(end);
-    }
-    return segments.filter(Boolean);
+export type ClaimPathFormat = {
+    parse: (path: string) => string[];
+    groupLabel: (segment: string) => string;
 };
 
-/** Keys containing a dot are mdoc namespaces (e.g. org.iso.18013.5.1); show them as they are. */
-const formatSegmentLabel = (segment: string): string =>
-    segment.includes(".") ? segment : formatKeyLabel(segment);
+const parseSdJwtClaimPath = (path: string): string[] =>
+    path.replace(/^\$\./, "").split(".").filter(Boolean);
+
+const MDOC_PATH_SEGMENT = /\[(['"])((?:\\.|(?!\1).)*)\1\]/g;
+
+const parseMdocClaimPath = (path: string): string[] => {
+    const segments = Array.from(path.matchAll(MDOC_PATH_SEGMENT), (match) =>
+        match[2].replace(/\\(.)/g, "$1")
+    );
+    return segments.length > 0 ? segments : [path];
+};
+
+export const sdJwtClaimPathFormat: ClaimPathFormat = {
+    parse: parseSdJwtClaimPath,
+    groupLabel: formatKeyLabel,
+};
+
+export const mdocClaimPathFormat: ClaimPathFormat = {
+    parse: parseMdocClaimPath,
+    groupLabel: (namespace) => namespace,
+};
 
 const insertIntoTree = (
     nodes: ClaimNode[],
     segments: string[],
     path: string,
-    claimType: ClaimType
+    claimType: ClaimType,
+    format: ClaimPathFormat
 ): void => {
     if (segments.length === 0) {
         return;
@@ -73,7 +60,7 @@ const insertIntoTree = (
         nodes.push({
             kind: "leaf",
             path,
-            label: formatSegmentLabel(segments[0]),
+            label: formatKeyLabel(segments[0]),
             claimType,
         });
         return;
@@ -89,13 +76,13 @@ const insertIntoTree = (
         group = {
             kind: "group",
             key: head,
-            label: formatSegmentLabel(head),
+            label: format.groupLabel(head),
             children: [],
         };
         nodes.push(group);
     }
 
-    insertIntoTree(group.children, tail, path, claimType);
+    insertIntoTree(group.children, tail, path, claimType, format);
 };
 
 const hasSdClaimDescendant = (node: ClaimGroup): boolean =>
@@ -131,11 +118,12 @@ const sortClaimNodes = (nodes: ClaimNode[]): ClaimNode[] =>
 
 export const buildClaimTree = (
     claims: string[] = [],
-    sdClaims: string[] = []
+    sdClaims: string[] = [],
+    format: ClaimPathFormat = sdJwtClaimPathFormat
 ): ClaimNode[] => {
     const root: ClaimNode[] = [];
-    sdClaims.forEach((path) => insertIntoTree(root, parseClaimPath(path), path, "sdClaim"));
-    claims.forEach((path) => insertIntoTree(root, parseClaimPath(path), path, "claim"));
+    sdClaims.forEach((path) => insertIntoTree(root, format.parse(path), path, "sdClaim", format));
+    claims.forEach((path) => insertIntoTree(root, format.parse(path), path, "claim", format));
     return sortClaimNodes(root);
 };
 

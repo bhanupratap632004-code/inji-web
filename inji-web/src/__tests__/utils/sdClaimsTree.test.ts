@@ -1,45 +1,54 @@
-import { buildClaimTree, collectSdClaimPaths, parseClaimPath } from "../../utils/sdClaimsTree";
+import {
+    buildClaimTree,
+    collectSdClaimPaths,
+    mdocClaimPathFormat,
+    sdJwtClaimPathFormat,
+} from "../../utils/sdClaimsTree";
 
-describe("parseClaimPath", () => {
-    test("splits dotted SD-JWT paths on dots", () => {
-        expect(parseClaimPath("$.address.city")).toEqual(["address", "city"]);
-        expect(parseClaimPath("$.given_name")).toEqual(["given_name"]);
+describe("sdJwtClaimPathFormat", () => {
+    test("splits dotted paths on dots", () => {
+        expect(sdJwtClaimPathFormat.parse("$.address.city")).toEqual(["address", "city"]);
+        expect(sdJwtClaimPathFormat.parse("$.given_name")).toEqual(["given_name"]);
     });
 
     test("keeps an array index on its key", () => {
-        expect(parseClaimPath("$.nationalities[0]")).toEqual(["nationalities[0]"]);
+        expect(sdJwtClaimPathFormat.parse("$.nationalities[0]")).toEqual(["nationalities[0]"]);
     });
 
-    test("keeps a dotted mdoc namespace in one segment", () => {
-        expect(parseClaimPath("$['org.iso.18013.5.1']['family_name']")).toEqual([
+    test("is the default format of buildClaimTree", () => {
+        const tree = buildClaimTree([], ["$.address.city"]);
+
+        expect(tree).toHaveLength(1);
+        expect(tree[0].label).toBe("Address");
+        expect(collectSdClaimPaths(tree)).toEqual(["$.address.city"]);
+    });
+});
+
+describe("mdocClaimPathFormat", () => {
+    test("keeps a dotted namespace in one segment", () => {
+        expect(mdocClaimPathFormat.parse("$['org.iso.18013.5.1']['family_name']")).toEqual([
             "org.iso.18013.5.1",
             "family_name",
         ]);
     });
 
-    test("handles mixed bracket and dot segments and escaped quotes", () => {
-        expect(parseClaimPath("$['org.iso.18013.5.1'].family_name")).toEqual([
-            "org.iso.18013.5.1",
-            "family_name",
-        ]);
-        expect(parseClaimPath("$['org.example.1']['it\\'s']")).toEqual([
+    test("unescapes quotes inside a segment", () => {
+        expect(mdocClaimPathFormat.parse("$['org.example.1']['it\\'s']")).toEqual([
             "org.example.1",
             "it's",
         ]);
     });
 
-    test("does not loop on an unterminated bracket", () => {
-        expect(parseClaimPath("$['org.iso")).toEqual(["['org.iso"]);
+    test("keeps a path without bracket segments as one key", () => {
+        expect(mdocClaimPathFormat.parse("family_name")).toEqual(["family_name"]);
     });
-});
 
-describe("buildClaimTree for mdoc claims", () => {
     test("groups data elements under their namespace", () => {
         const sdClaims = [
             "$['org.iso.18013.5.1']['given_name']",
             "$['org.iso.18013.5.1']['family_name']",
         ];
-        const tree = buildClaimTree([], sdClaims);
+        const tree = buildClaimTree([], sdClaims, mdocClaimPathFormat);
 
         expect(tree).toHaveLength(1);
         const group = tree[0];
