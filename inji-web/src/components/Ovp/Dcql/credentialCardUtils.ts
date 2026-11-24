@@ -1,4 +1,5 @@
 import { SelectedSdClaimsMap, WalletCredential } from "../../../types/data";
+import { DcqlQueryGroup, DcqlSelectionState } from "../../../types/dcql";
 import { DcqlCredentialActionVariant } from "./DcqlCredentialOptionCard";
 
 type CredentialWithFormat = Pick<WalletCredential, "format"> | { format?: string };
@@ -43,4 +44,29 @@ export function buildMdocDefaultSdClaims(
         }
     });
     return defaults;
+}
+
+export function buildDcqlSelectedSdClaims(
+    queryGroups: DcqlQueryGroup[],
+    selection: DcqlSelectionState
+): SelectedSdClaimsMap {
+    const selected: SelectedSdClaimsMap = {};
+    queryGroups.forEach((group) => {
+        const selectedIds = new Set(selection[group.queryId] ?? []);
+        group.availableCredentials.forEach((credential) => {
+            if (
+                !selectedIds.has(credential.credentialId) ||
+                !isSelectivelyDisclosableCredential(credential) ||
+                !Array.isArray(credential.sdClaims) ||
+                credential.sdClaims.length === 0
+            ) {
+                return;
+            }
+            const claims = selected[credential.credentialId] ?? [];
+            selected[credential.credentialId] = Array.from(
+                new Set([...claims, ...credential.sdClaims])
+            );
+        });
+    });
+    return selected;
 }

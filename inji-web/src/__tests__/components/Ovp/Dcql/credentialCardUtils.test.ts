@@ -1,5 +1,6 @@
 import { WalletCredential } from "../../../../types/data";
 import {
+    buildDcqlSelectedSdClaims,
     buildMdocDefaultSdClaims,
     getCredentialActionVariant,
     isMdocCredential,
@@ -73,6 +74,39 @@ describe("credentialCardUtils", () => {
 
         expect(buildMdocDefaultSdClaims([mdoc, mdocWithoutClaims, sdJwt])).toEqual({
             "mdoc-1": ["$['org.iso.18013.5.1']['family_name']"],
+        });
+    });
+
+    describe("buildDcqlSelectedSdClaims", () => {
+        const dob = { ...makeCredential("dc+sd-jwt"), credentialId: "sd-1", sdClaims: ["dateOfBirth"] };
+        const region = { ...makeCredential("dc+sd-jwt"), credentialId: "sd-1", sdClaims: ["region"] };
+        const otherCard = { ...makeCredential("dc+sd-jwt"), credentialId: "sd-2", sdClaims: ["region"] };
+        const queryGroups = [
+            { queryId: "dob_q", required: true, multiple: false, availableCredentials: [dob], missingClaims: [] },
+            { queryId: "region_q", required: true, multiple: false, availableCredentials: [region, otherCard], missingClaims: [] },
+        ];
+
+        test("sends the claims of every query a card is picked for", () => {
+            expect(
+                buildDcqlSelectedSdClaims(queryGroups, { dob_q: ["sd-1"], region_q: ["sd-1"] })
+            ).toEqual({ "sd-1": ["dateOfBirth", "region"] });
+        });
+
+        test("follows the card picked for each query", () => {
+            expect(
+                buildDcqlSelectedSdClaims(queryGroups, { dob_q: ["sd-1"], region_q: ["sd-2"] })
+            ).toEqual({ "sd-1": ["dateOfBirth"], "sd-2": ["region"] });
+        });
+
+        test("skips queries with no card picked and cards without selectable claims", () => {
+            const ldp = { ...makeCredential("ldp_vc"), credentialId: "ldp-1", sdClaims: ["name"] };
+            const groups = [
+                ...queryGroups,
+                { queryId: "ldp_q", required: false, multiple: false, availableCredentials: [ldp], missingClaims: [] },
+            ];
+            expect(buildDcqlSelectedSdClaims(groups, { dob_q: ["sd-1"], ldp_q: ["ldp-1"] })).toEqual({
+                "sd-1": ["dateOfBirth"],
+            });
         });
     });
 });

@@ -22,6 +22,7 @@ import MatchingCredentials from "../components/Ovp/MatchingCredentials";
 import DcqlQueryGroups from "../components/Ovp/DcqlQueryGroups";
 import DcqlCredentialSets from "../components/Ovp/DcqlCredentialSets";
 import {
+    buildDcqlSelectedSdClaims,
     buildMdocDefaultSdClaims,
     isSelectivelyDisclosableCredential,
 } from "../components/Ovp/Dcql/credentialCardUtils";
@@ -499,6 +500,10 @@ export const VPAuthorizationPage: React.FC = () => {
         if (!selectedCredentialsData?.length) {
             return undefined;
         }
+        if (isDcqlPresentation) {
+            const dcqlPayload = buildDcqlSelectedSdClaims(queryGroupsData, dcqlSelection);
+            return Object.keys(dcqlPayload).length > 0 ? dcqlPayload : undefined;
+        }
         const payload: SelectedSdClaimsMap = {};
         selectedCredentialsData.forEach((credential) => {
             if (!isSelectivelyDisclosableCredential(credential)) {
@@ -510,7 +515,7 @@ export const VPAuthorizationPage: React.FC = () => {
             }
         });
         return Object.keys(payload).length > 0 ? payload : undefined;
-    }, [selectedCredentialsData, selectedSdClaimsByCredential]);
+    }, [selectedCredentialsData, selectedSdClaimsByCredential, isDcqlPresentation, queryGroupsData, dcqlSelection]);
 
     useEffect(() => {
         if (!isUserLoggedIn() || fetchingRef.current) {
