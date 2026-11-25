@@ -42,7 +42,7 @@ export function DcqlQueryCredentials({
     const { t } = useTranslation("VerifierTrustPage");
     const [previewCredential, setPreviewCredential] =
         useState<WalletCredential | null>(null);
-    const [selectedSDJWT, setSelectedSDJWT] = useState<WalletCredential | null>(null);
+    const [selectedCredential, setSelectedCredential] = useState<WalletCredential | null>(null);
     const [showSDClaimsModal, setShowSDClaimsModal] = useState(false);
     const [showAll, setShowAll] = useState(false);
 
@@ -82,7 +82,7 @@ export function DcqlQueryCredentials({
     const handleActionClick = (credential: WalletCredential) => {
         if (isSelectivelyDisclosableCredential(credential)) {
             // In DCQL mode show the claims modal as read-only (all claims pre-selected).
-            setSelectedSDJWT(credential);
+            setSelectedCredential(credential);
             setShowSDClaimsModal(true);
             return;
         }
@@ -137,13 +137,13 @@ export function DcqlQueryCredentials({
 
             {showSDClaimsModal && (
                 <SDClaimsSelectionModal
-                    key={selectedSDJWT?.credentialId}
-                    seletedSDJWT={selectedSDJWT}
+                    key={selectedCredential?.credentialId}
+                    selectedCredential={selectedCredential}
                     closeModal={setShowSDClaimsModal}
                     readOnly={true}
                     initialSelectedSdClaims={
-                        selectedSDJWT
-                            ? selectedSdClaimsByCredential[selectedSDJWT.credentialId]
+                        selectedCredential
+                            ? selectedSdClaimsByCredential[selectedCredential.credentialId]
                             : undefined
                     }
                     onConfirm={() => {}}

@@ -34,7 +34,7 @@ export function VpCredentialOptionCards({
         useState(false);
     const [previewCredential, setPreviewCredential] =
         useState<WalletCredential | null>(null);
-    const [selectedSDJWT, setSelectedSDJWT] = useState<WalletCredential | null>(
+    const [selectedCredential, setSelectedCredential] = useState<WalletCredential | null>(
         null
     );
 
@@ -45,7 +45,7 @@ export function VpCredentialOptionCards({
 
     const handleActionClick = (credential: WalletCredential) => {
         if (isSelectivelyDisclosableCredential(credential)) {
-            setSelectedSDJWT(credential);
+            setSelectedCredential(credential);
             setShowSDClaimsSelectionModal(true);
             return;
         }
@@ -89,13 +89,13 @@ export function VpCredentialOptionCards({
 
             {showSDClaimsSelectionModal && (
                 <SDClaimsSelectionModal
-                    key={selectedSDJWT?.credentialId}
-                    seletedSDJWT={selectedSDJWT}
+                    key={selectedCredential?.credentialId}
+                    selectedCredential={selectedCredential}
                     closeModal={setShowSDClaimsSelectionModal}
                     initialSelectedSdClaims={
-                        selectedSDJWT
+                        selectedCredential
                             ? selectedSdClaimsByCredential[
-                                  selectedSDJWT.credentialId
+                                  selectedCredential.credentialId
                               ]
                             : undefined
                     }

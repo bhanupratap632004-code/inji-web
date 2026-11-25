@@ -134,7 +134,7 @@ describe("SDClaimsSelectionModal", () => {
   };
 
   const defaultProps = {
-    seletedSDJWT: mockCredential,
+    selectedCredential: mockCredential,
     closeModal: mockCloseModal,
     onConfirm: mockOnConfirm,
   };
@@ -186,7 +186,7 @@ describe("SDClaimsSelectionModal", () => {
         sdClaims: ["$['org.iso.18013.5.1']['family_name']"],
       };
 
-      renderModal({ seletedSDJWT: mdocCredential });
+      renderModal({ selectedCredential: mdocCredential });
 
       expect(mockBuildClaimTree).toHaveBeenCalledWith(
         [],
@@ -294,7 +294,7 @@ describe("SDClaimsSelectionModal", () => {
     });
 
     it("does not call onConfirm when credential is null", () => {
-      renderModal({ seletedSDJWT: null });
+      renderModal({ selectedCredential: null });
 
       fireEvent.click(screen.getByTestId("show-consent-modal-button"));
 
@@ -360,7 +360,7 @@ describe("SDClaimsSelectionModal", () => {
   describe("edge cases", () => {
     it("renders with empty claims and sdClaims arrays", () => {
       renderModal({
-        seletedSDJWT: {
+        selectedCredential: {
           ...mockCredential,
           claims: [],
           sdClaims: [],

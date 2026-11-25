@@ -23,7 +23,7 @@ import {
 import { isMdocCredential } from "../components/Ovp/Dcql/credentialCardUtils";
 
 export interface SDClaimsSelectionModalContentProps {
-    seletedSDJWT: WalletCredential | null;
+    selectedCredential: WalletCredential | null;
     closeModal: (isOpen: boolean) => void;
     onConfirm: (credentialId: string, selectedClaimPaths: string[]) => void;
     initialSelectedSdClaims?: string[];
@@ -31,7 +31,7 @@ export interface SDClaimsSelectionModalContentProps {
 }
 
 export function SDClaimsSelectionModalContent({
-    seletedSDJWT,
+    selectedCredential,
     closeModal,
     onConfirm,
     initialSelectedSdClaims = [],
@@ -43,10 +43,10 @@ export function SDClaimsSelectionModalContent({
     const previewApi = useApi<Blob>();
     const styles = ModalStyles.sdClaimsSelectionModal;
 
-    const claims = seletedSDJWT?.claims ?? [];
-    const sdClaims = seletedSDJWT?.sdClaims ?? [];
+    const claims = selectedCredential?.claims ?? [];
+    const sdClaims = selectedCredential?.sdClaims ?? [];
     const claimPathFormat =
-        seletedSDJWT && isMdocCredential(seletedSDJWT)
+        selectedCredential && isMdocCredential(selectedCredential)
             ? mdocClaimPathFormat
             : sdJwtClaimPathFormat;
     const claimTree = useMemo(
@@ -74,7 +74,7 @@ export function SDClaimsSelectionModalContent({
     const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
     useEffect(() => {
-        if (!seletedSDJWT?.credentialId) {
+        if (!selectedCredential?.credentialId) {
             setPreviewContent(null);
             return;
         }
@@ -88,7 +88,7 @@ export function SDClaimsSelectionModalContent({
             try {
                 const response = await previewApi.fetchData({
                     url: api.fetchWalletCredentialPreview.url(
-                        seletedSDJWT.credentialId
+                        selectedCredential.credentialId
                     ),
                     headers: api.fetchWalletCredentialPreview.headers(language),
                     apiConfig: api.fetchWalletCredentialPreview,
@@ -109,7 +109,7 @@ export function SDClaimsSelectionModalContent({
         return () => {
             cancelled = true;
         };
-    }, [language, seletedSDJWT?.credentialId]);
+    }, [language, selectedCredential?.credentialId]);
 
     const allDisclosableSelected =
         disclosableLeaves.length > 0 &&
@@ -146,11 +146,11 @@ export function SDClaimsSelectionModalContent({
     };
 
     const handleConfirm = () => {
-        if (!seletedSDJWT) {
+        if (!selectedCredential) {
             return;
         }
         if (!readOnly) {
-            onConfirm(seletedSDJWT.credentialId, Array.from(selectedSdClaims));
+            onConfirm(selectedCredential.credentialId, Array.from(selectedSdClaims));
         }
         closeModal(false);
     };
@@ -193,7 +193,7 @@ export function SDClaimsSelectionModalContent({
             <div className={styles.headerRow}>
                 <div className="min-w-0 flex-1 text-start">
                     <h1 className={styles.title}>
-                        {seletedSDJWT?.credentialTypeDisplayName}
+                        {selectedCredential?.credentialTypeDisplayName}
                     </h1>
                     <p className={styles.subtitle}>
                         {readOnly ? t("subtitleReadOnly") : t("subtitle")}

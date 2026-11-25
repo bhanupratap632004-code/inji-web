@@ -36,7 +36,7 @@ export function QueryGroupCredentialList({
 }: QueryGroupCredentialListProps) {
     const { t } = useTranslation("VerifierTrustPage");
     const [showSDClaimsModal, setShowSDClaimsModal] = useState(false);
-    const [selectedSDJWT, setSelectedSDJWT] = useState<WalletCredential | null>(null);
+    const [selectedCredential, setSelectedCredential] = useState<WalletCredential | null>(null);
 
     const handleCredentialSelect = (credential: WalletCredential) => {
         const isSelected = selectedCredentialIds.includes(credential.credentialId);
@@ -57,7 +57,7 @@ export function QueryGroupCredentialList({
         }
 
         if (isSelectivelyDisclosableCredential(credential)) {
-            setSelectedSDJWT(credential);
+            setSelectedCredential(credential);
             setShowSDClaimsModal(true);
         }
     };
@@ -130,13 +130,13 @@ export function QueryGroupCredentialList({
             </div>
             {showSDClaimsModal && (
                 <SDClaimsSelectionModal
-                    key={selectedSDJWT?.credentialId}
-                    seletedSDJWT={selectedSDJWT}
+                    key={selectedCredential?.credentialId}
+                    selectedCredential={selectedCredential}
                     closeModal={setShowSDClaimsModal}
                     readOnly={true}
                     initialSelectedSdClaims={
-                        selectedSDJWT
-                            ? selectedSdClaimsByCredential[selectedSDJWT.credentialId]
+                        selectedCredential
+                            ? selectedSdClaimsByCredential[selectedCredential.credentialId]
                             : undefined
                     }
                     onConfirm={() => {}}
